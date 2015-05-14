@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define PORT 23460       // my UDP port
+#define PORT 64252       // my UDP port
 #define MAX 20000        // times of message transfer
 #define MAXWIN 30        // the maximum window size
 #define LOOP 10          // loop in test 4 and 5
@@ -12,16 +12,16 @@ using namespace std;
 // client packet sending functions
 void clientUnreliable( UdpSocket &sock, const int max, int message[] );
 int clientStopWait( UdpSocket &sock, const int max, int message[] );
-// int clientSlidingWindow( UdpSocket &sock, const int max, int message[], 
-			  // int windowSize );
+int clientSlidingWindow( UdpSocket &sock, const int max, int message[], 
+			  int windowSize );
 //int clientSlowAIMD( UdpSocket &sock, const int max, int message[],
 //		     int windowSize, bool rttOn );
 
 // server packet receiving fucntions
 void serverUnreliable( UdpSocket &sock, const int max, int message[] );
 void serverReliable( UdpSocket &sock, const int max, int message[] );
-// void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
-// 			 int windowSize );
+void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
+			 int windowSize );
 //void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
 //			 int windowSize, bool congestion );
 
@@ -76,7 +76,7 @@ int main( int argc, char *argv[] ) {
       for ( int windowSize = 1; windowSize <= MAXWIN; windowSize++ ) {
 	timer.start( );                                        // start timer
 	retransmits =
-	// TODO clientSlidingWindow( sock, MAX, message, windowSize ); // actual test
+	clientSlidingWindow( sock, MAX, message, windowSize ); // actual test
 	cerr << "Window size = ";                              // lap timer
 	cout << windowSize << " ";
 	cerr << "Elasped time = "; 
@@ -99,7 +99,7 @@ int main( int argc, char *argv[] ) {
       break;
     case 3:
       for ( int windowSize = 1; windowSize <= MAXWIN; windowSize++ )
-	// TODO serverEarlyRetrans( sock, MAX, message, windowSize );
+	serverEarlyRetrans( sock, MAX, message, windowSize );
       break;
     default:
       cerr << "no such test case" << endl;

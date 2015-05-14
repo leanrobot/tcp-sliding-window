@@ -4,17 +4,16 @@
 const int TIMEOUT_USEC = 1500;
 
 int clientStopWait( UdpSocket &sock, const int max, int message[] ) {
-    cerr << "client: unreliable test:" << endl;
+    cerr << "client: stop & wait test:" << endl;
 
     int retransNum = 0;
 
-    // transfer message[] max times
     int ackNum = -1;
     for ( int i = 0; i < max; i++ ) {
-        message[0] = i;                            // message[0] has a sequence #
+        message[0] = i; // place sequence # in message[0].
 
         while(ackNum != i) {
-            sock.sendTo( ( char * )message, MSGSIZE ); // udp message send
+            sock.sendTo( ( char * )message, MSGSIZE ); // send the message
 
             Timer timeout;
             timeout.start();
@@ -26,10 +25,11 @@ int clientStopWait( UdpSocket &sock, const int max, int message[] ) {
                 sock.recvFrom((char*)&ackNum, sizeof(int));
             } else {
                 retransNum++;
+                cerr << "timeout: retransmitting " << i << endl;
             }
         }
 
-        cerr << "message = " << message[0] << endl;
+        cerr << "ack = " << ackNum << " message = " << message[0] << endl;
     }
     return retransNum;
 }
@@ -46,4 +46,14 @@ void serverReliable( UdpSocket &sock, const int max, int message[] ) {
         sock.ackTo( (char*) &ackNum, sizeof(int));
         cerr << "ack " << ackNum << endl;
     }
+}
+
+int clientSlidingWindow( UdpSocket &sock, const int max, int message[], 
+int windowSize ) {
+    return -1;
+}
+
+void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
+          int windowSize ) {
+    
 }
