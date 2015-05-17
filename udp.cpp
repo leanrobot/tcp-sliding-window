@@ -203,7 +203,7 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         int seqNum = message[0];
         // cerr << "receive seq # = " << seqNum << endl;
         
-        packets[seqNum] = true;
+        if(seqNum < max) packets[seqNum] = true;
 
         // fast forward before ack'ing
         while(packets[i]) i++;
