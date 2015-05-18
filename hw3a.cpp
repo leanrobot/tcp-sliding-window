@@ -22,7 +22,7 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
 void serverUnreliable(UdpSocket &sock, const int max, int message[]);
 void serverReliable(UdpSocket &sock, const int max, int message[]);
 void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
-        int windowSize);
+        int windowSize, int dropPercent);
 
 enum myPartType {
     CLIENT, SERVER, ERROR
@@ -75,17 +75,18 @@ int main(int argc, char *argv[]) {
             break;
         case 3:
             for (int windowSize = 1; windowSize <= MAXWIN; windowSize = MAXWIN) {
-                for(int dropPercent = 0; dropPercent <=MAXDROP)
-                timer.start();                                    // start timer
-                retransmits = clientSlidingWindow(sock, MAX, message,
-                        windowSize); // actual test
-                cerr << "Window size = ";                           // lap timer
-                cout << windowSize << " ";
-                cerr << "drop percent = ";
-                cout << dropPercent << endl;
-                cerr << "Elasped time = ";
-                cout << timer.lap() << endl;
-                cerr << "retransmits = " << retransmits << endl;
+                for(int dropPercent = 0; dropPercent <=MAXDROP; dropPercent++) {
+                    timer.start();                                    // start timer
+                    retransmits = clientSlidingWindow(sock, MAX, message,
+                            windowSize); // actual test
+                    cerr << "Window size = ";                           // lap timer
+                    cout << windowSize << " ";
+                    cerr << "drop percent = ";
+                    cout << dropPercent << endl;
+                    cerr << "Elasped time = ";
+                    cout << timer.lap() << endl;
+                    cerr << "retransmits = " << retransmits << endl;
+                }
             }
             break;
         default:
@@ -103,7 +104,7 @@ int main(int argc, char *argv[]) {
             break;
         case 3:
             for (int windowSize = 1; windowSize <= MAXWIN; windowSize++) {
-                for(int dropPercent = 0; i <= MAXDROP; dropPercent++){
+                for(int dropPercent = 0; dropPercent <= MAXDROP; dropPercent++){
                     serverEarlyRetrans(sock, MAX, message, windowSize, dropPercent);
                 }
             }

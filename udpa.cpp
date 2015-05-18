@@ -20,6 +20,10 @@ int recvAck(UdpSocket& sock) {
     return ackNum;
 }
 
+bool isTimeout(Timer& t) {
+    return t.lap() >= TIMEOUT_USEC;
+}
+
 /*==============================================================================
         Stop & Wait Implementation
 */
@@ -72,7 +76,96 @@ void serverReliable( UdpSocket &sock, const int max, int message[] ) {
 /*==============================================================================
         Sliding Window Implementation
 */
+int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int windowSize ) {
+    bool* sent = new bool[max];
+    for(int i=0; i<max; i++) sent[i] = false;
 
+    int retransmitted   = 0;
+    int base     = 0;
+    int nextSeqNum = 0;
+    Timer timer;
+
+    while(nextSeqNum < max) {
+        if(nextSeqNum < base + windowSize) {
+            message[0] = nextSeqNum; // place sequence # in message[0].
+            cerr << "send seq # = " << nextSeqNum << endl;
+            sock.sendTo( (char*) message, MSGSIZE);
+
+            // retransmission counter logic.
+            if(sent[nextSeqNum]) retransmitted++;
+            sent[nextSeqNum] = true;
+            if(base == nextSeqNum)
+                timer.start();
+            nextSeqNum++;
+        }
+        else if(isTimeout(timer)) {
+            nextSeqNum = base;
+        }
+        else if(canRecv(sock)) {
+            int ack = recvAck(sock);
+            base = ack + 1;
+            if(base == nextSeqNum)
+                timer.start();
+        }
+    }
+    return retransmitted;
+}
+
+void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
+          int windowSize, int dropPercent ) {
+    cerr << "start window size = " << windowSize << endl;
+    // init packets array all to false;
+    bool* packets = new bool[max];
+    for(int i=0; i<max; i++) packets[i] = false;
+
+    int expectedSeqNum = 0;
+
+    while(expectedSeqNum < max) {
+        sock.recvFrom( (char*) message, MSGSIZE);
+        int seqNum = message[0];
+
+        if(!isRandomDrop(dropPercent)) {
+            if(seqNum < max) packets[seqNum] = true;
+            sock.ackTo((char*) &expectedSeqNum, sizeof(int));
+
+            // print current state to STDERR.
+            cerr << "ACK " << expectedSeqNum << " received = " << seqNum << endl;
+            if(seqNum+1 != expectedSeqNum) cerr << "\t\tNOT EXPECTED" << endl;
+            else cerr << endl;
+
+            if(seqNum == expectedSeqNum) {
+                expectedSeqNum++;
+            }
+        }
+    }
+
+    // for(int i=0; i<max;) {
+    //     // receive and recorded a message.
+    //     sock.recvFrom( (char*) message, MSGSIZE);
+    //     int seqNum = message[0];
+        
+    //     bool isDrop = isRandomDrop(dropPercent);
+    //     // randomly drop (not record) a received packet.
+    //     if(!isDrop) {
+    //         if(seqNum < max) packets[seqNum] = true;
+
+    //         // fast forward before ack'ing
+    //         while(packets[i]) i++;
+
+    //         sock.ackTo((char*) &i, sizeof(int));
+    //         // print current state to STDERR.
+    //         cerr << "ACK " << i << " received = " << seqNum << endl;
+    //         if(seqNum+1 != i)   cerr << "\t\tNOT EXPECTED" << endl;
+    //         else                cerr << endl;
+    //     }
+
+    // }
+
+    delete packets;
+
+    cerr << "finish window size = " << windowSize << endl;
+}
+/*
 int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int windowSize ) {
     // used to track retransmission.
     bool* sent = new bool[max];
@@ -125,6 +218,7 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
     return retransmitted;
 }
 
+
 void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
           int windowSize, int dropPercent ) {
     cerr << "start window size = " << windowSize << endl;
@@ -158,3 +252,4 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
 
     cerr << "finish window size = " << windowSize << endl;
 }
+*/
