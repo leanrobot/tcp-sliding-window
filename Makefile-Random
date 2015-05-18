@@ -1,0 +1,8 @@
+all: build
+
+build:
+	mkdir -p bin
+	g++ -o bin/hw3a UdpSocket.cpp udpa.cpp Timer.cpp hw3a.cpp
+clean:
+
+	rm -rf bin/
