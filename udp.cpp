@@ -122,6 +122,7 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
 
 void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
           int windowSize ) {
+    cerr << "server early retrans test:" << endl;
     cerr << "start window size = " << windowSize << endl;
     // init packets array all to false;
     bool* packets = new bool[max];
