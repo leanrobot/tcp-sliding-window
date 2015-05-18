@@ -2,7 +2,7 @@
 #include "Timer.h"
 #include "stdlib.h"
 #include "stdio.h"
-#include <random>
+#include <cstdlib>
 
 const int TIMEOUT_USEC = 1500;
 
