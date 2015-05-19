@@ -135,6 +135,7 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
           int windowSize, int dropPercent) {
     cerr << "server: early retransmit test:" << endl;
     cerr << "start window size = " << windowSize << endl;
+    fprintf(stderr, "start window size = %d, drop percent = %d\n", windowSize, dropPercent);
     // used to track all received packets.
     bool packets[max];
     for(int i=0; i<max; i++) packets[i] = false;
@@ -163,5 +164,5 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         }
     }
 
-    cerr << "finish window size = " << windowSize << endl;
+    fprintf(stderr, "end window size = %d, drop percent = %d\n", windowSize, dropPercent);
 }
