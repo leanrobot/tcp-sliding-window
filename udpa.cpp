@@ -77,7 +77,7 @@ void serverReliable( UdpSocket &sock, const int max, int message[] ) {
         Sliding Window Implementation
 */
 int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int windowSize ) {
-    bool* sent = new bool[max];
+    bool sent[max];
     for(int i=0; i<max; i++) sent[i] = false;
 
     int retransmitted   = 0;
@@ -85,9 +85,10 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
     int nextSeqNum = 0;
     Timer timer;
 
-    while(nextSeqNum < max) {
-        fprintf(stderr, "base = %d, nextSeqNum = %d, base+windowSize = %d\n", base, nextSeqNum, base+windowSize);
-        if(nextSeqNum < base + windowSize) {
+    while(nextSeqNum < max || base < max) {
+        fprintf(stderr, "window = %d, base = %d, nextSeqNum = %d, base+windowSize = %d\n", windowSize, base, nextSeqNum, base+windowSize);
+        // in window & not finished transmitting.
+        if(nextSeqNum < base + windowSize && nextSeqNum < max) {
             message[0] = nextSeqNum; // place sequence # in message[0].
             cerr << "send seq # = " << nextSeqNum << endl;
             sock.sendTo( (char*) message, MSGSIZE);
@@ -95,59 +96,77 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
             // retransmission counter logic.
             if(sent[nextSeqNum]) retransmitted++;
             sent[nextSeqNum] = true;
-            if(base == nextSeqNum)
-                timer.start();
+
+            if(canRecv(sock)) {
+                int ack = recvAck(sock);
+                if(ack == base) base++;
+            }
             nextSeqNum++;
         }
-        if(isTimeout(timer)) {
-            cerr << "timeout base = " << base << endl;
-            nextSeqNum = base;
-        }
-        if(canRecv(sock)) {
-            int ack = recvAck(sock);
-            cerr << "receive ACK " << ack << endl;
-            base = ack;
-            cerr << "receive base = " << base << endl;
-            if(base == nextSeqNum)
-                timer.start();
-        }
+        // outside window
+        else {
+            timer.start();
 
-        // if(timeouts == 15) {
-        //     exit(-1);
-        // }
+            while(!isTimeout(timer) & !canRecv(sock)) {}
+
+            // ack received.
+            if(canRecv(sock)) {
+                int ack = recvAck(sock);
+                cerr << "receive ACK " << ack << endl;
+                if(ack >= base) {
+                    base = ack +1;
+                    cerr << "receive base = " << base << endl;
+                }
+            }
+            // timeout
+            else {
+                cerr << "timeout base = " << base << endl;
+                nextSeqNum = base;
+            }
+        }
     }
+    while(canRecv(sock))
+        int discard = recvAck(sock);
+
     return retransmitted;
 }
 
 void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
-          int windowSize, int dropPercent) {
+          int windowSize) {
     cerr << "start window size = " << windowSize << endl;
     // init packets array all to false;
-    bool* packets = new bool[max];
+    bool packets[max];
     for(int i=0; i<max; i++) packets[i] = false;
 
     int expectedSeqNum = 0;
+    int ackNum;
 
     while(expectedSeqNum < max) {
         sock.recvFrom( (char*) message, MSGSIZE);
         int seqNum = message[0];
 
         if(!isRandomDrop(dropPercent)) {
-            if(seqNum < max) packets[seqNum] = true;
-
             // print current state to STDERR.
-            cerr << "ACK " << expectedSeqNum << " received = " << seqNum;
-            if(seqNum != expectedSeqNum) cerr << "\t\tNOT EXPECTED" << endl;
-            else cerr << endl;
-
-            if(seqNum == expectedSeqNum) {
-                expectedSeqNum++;
+            if(seqNum < max && !packets[seqNum]) {
+                fprintf(stderr,"window = %d, ACK = %d, received = %d\n", windowSize, expectedSeqNum, seqNum);
             }
-            sock.ackTo((char*) &expectedSeqNum, sizeof(int));
+
+            packets[seqNum] = true;
+            if(seqNum == expectedSeqNum) {
+                while(expectedSeqNum < max && packets[expectedSeqNum])
+                    expectedSeqNum++;
+            }
+
+
+            ackNum = expectedSeqNum;
+            if(ackNum < max) 
+                sock.ackTo((char*) &ackNum, sizeof(ackNum));
+        }
+        else {
+            fprintf(stderr,"window = %d, ACK = %d, received = %d", windowSize, expectedSeqNum, seqNum);
+            cerr << "DROP " << endl;
         }
     }
-
-    delete packets;
 
     cerr << "finish window size = " << windowSize << endl;
 }
