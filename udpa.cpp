@@ -114,8 +114,8 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
             if(canRecv(sock)) {
                 int ack = recvAck(sock);
                 cerr << "receive ACK " << ack << endl;
-                if(ack >= base) {
-                    base = ack +1;
+                if(ack > base) {
+                    base = ack;
                     cerr << "receive base = " << base << endl;
                     windowMoved = true;
                 }
@@ -162,7 +162,7 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
             }
 
 
-            ackNum = expectedSeqNum;
+            ackNum = expectedSeqNum + 1;
             if(ackNum < max) 
                 sock.ackTo((char*) &ackNum, sizeof(ackNum));
         }
