@@ -81,7 +81,7 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
     int nextSeqNum = 0;
     Timer timer;
 
-    while(base <= max - 1) {
+    while(nextSeqNum < max || base < max) {
         fprintf(stderr, "window = %d, base = %d, nextSeqNum = %d, base+windowSize = %d\n", windowSize, base, nextSeqNum, base+windowSize);
         // in window & not finished transmitting.
         if(nextSeqNum < base + windowSize && nextSeqNum < max) {
@@ -93,9 +93,6 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
             if(sent[nextSeqNum]) retransmitted++;
             sent[nextSeqNum] = true;
 
-            if(base == nextSeqNum)
-                timer.start();
-
             if(canRecv(sock)) {
                 int ack = recvAck(sock);
                 if(ack == base) base++;
@@ -104,6 +101,11 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
         }
         // outside window
         else {
+            timer.start();
+
+            while(!isTimeout(timer) & !canRecv(sock)) {}
+
+            // ack received.
             if(canRecv(sock)) {
                 int ack = recvAck(sock);
                 cerr << "receive ACK " << ack << endl;
@@ -111,10 +113,9 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
                     base = ack +1;
                     cerr << "receive base = " << base << endl;
                 }
-                if(base == nextSeqNum)
-                    timer.start();
             }
-            if(isTimeout(timer)) {
+            // timeout
+            else {
                 cerr << "timeout base = " << base << endl;
                 nextSeqNum = base;
             }
