@@ -4,8 +4,8 @@
 
 using namespace std;
 
-#define PORT 23460       // my UDP port
-#define MAX 20000        // times of message transfer
+#define PORT 64252       // my UDP port
+#define MAX 5000        // times of message transfer
 #define MAXWIN 30        // the maximum window size
 #define LOOP 10          // loop in test 4 and 5
 #define MAXDROP 10      // max percentage to drop.
@@ -74,20 +74,30 @@ int main(int argc, char *argv[]) {
             cerr << "retransmits = " << retransmits << endl;
             break;
         case 3:
-            for (int windowSize = 1; windowSize <= MAXWIN; windowSize = MAXWIN) {
                 for(int dropPercent = 0; dropPercent <=MAXDROP; dropPercent++) {
                     timer.start();                                    // start timer
                     retransmits = clientSlidingWindow(sock, MAX, message,
-                            windowSize); // actual test
+                            1); // actual test
                     cerr << "Window size = ";                           // lap timer
-                    cout << windowSize << " ";
+                    cout << 1 << " ";
                     cerr << "drop percent = ";
-                    cout << dropPercent << endl;
+                    cout << dropPercent << " ";
                     cerr << "Elasped time = ";
                     cout << timer.lap() << endl;
                     cerr << "retransmits = " << retransmits << endl;
                 }
-            }
+                for(int dropPercent = 0; dropPercent <=MAXDROP; dropPercent++) {
+                    timer.start();                                    // start timer
+                    retransmits = clientSlidingWindow(sock, MAX, message,
+                            30); // actual test
+                    cerr << "Window size = ";                           // lap timer
+                    cout << 30 << " ";
+                    cerr << "drop percent = ";
+                    cout << dropPercent << " ";
+                    cerr << "Elasped time = ";
+                    cout << timer.lap() << endl;
+                    cerr << "retransmits = " << retransmits << endl;
+                }
             break;
         default:
             cerr << "no such test case" << endl;
@@ -103,10 +113,11 @@ int main(int argc, char *argv[]) {
             serverReliable(sock, MAX, message);
             break;
         case 3:
-            for (int windowSize = 1; windowSize <= MAXWIN; windowSize++) {
-                for(int dropPercent = 0; dropPercent <= MAXDROP; dropPercent++){
-                    serverEarlyRetrans(sock, MAX, message, windowSize, dropPercent);
-                }
+            for(int dropPercent = 0; dropPercent <= MAXDROP; dropPercent++){
+                serverEarlyRetrans(sock, MAX, message, 1, dropPercent);
+            }
+            for(int dropPercent = 0; dropPercent <= MAXDROP; dropPercent++){
+                serverEarlyRetrans(sock, MAX, message, 30, dropPercent);
             }
             break;
         default:
