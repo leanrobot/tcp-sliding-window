@@ -83,7 +83,7 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
 
     while(nextSeqNum < max) {
         fprintf(stderr, "base = %d, nextSeqNum = %d, base+windowSize = %d\n", base, nextSeqNum, base+windowSize);
-        while(nextSeqNum < base + windowSize) {
+        if(nextSeqNum < base + windowSize) {
             message[0] = nextSeqNum; // place sequence # in message[0].
             cerr << "send seq # = " << nextSeqNum << endl;
             sock.sendTo( (char*) message, MSGSIZE);
@@ -95,7 +95,7 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
                 timer.start();
             nextSeqNum++;
         }
-        while(canRecv(sock)) {
+        if(canRecv(sock)) {
             int ack = recvAck(sock);
             cerr << "receive ACK " << ack << endl;
             if(0<=ack && ack < max && ack > base)
