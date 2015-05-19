@@ -164,7 +164,7 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
 
             ackNum = expectedSeqNum + 1;
             if(ackNum <= max) {
-                cerr << "FFFFFFFFFFFFFFFF";
+                cerr << "acked " << ackNum << endl;
                 sock.ackTo((char*) &ackNum, sizeof(ackNum));
             }
         }
