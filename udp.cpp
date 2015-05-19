@@ -81,7 +81,7 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
     int nextSeqNum = 0;
     Timer timer;
 
-    while(base < max && nextSeqNum < max) {
+    while(base <= max - 1) {
         fprintf(stderr, "window = %d, base = %d, nextSeqNum = %d, base+windowSize = %d\n", windowSize, base, nextSeqNum, base+windowSize);
         // in window & not finished transmitting.
         if(nextSeqNum < base + windowSize && nextSeqNum < max) {
@@ -108,7 +108,7 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
                 int ack = recvAck(sock);
                 cerr << "receive ACK " << ack << endl;
                 if(ack >= base) {
-                    base = ack;
+                    base = ack +1;
                     cerr << "receive base = " << base << endl;
                 }
                 if(base == nextSeqNum)
@@ -140,14 +140,18 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         sock.recvFrom( (char*) message, MSGSIZE);
         int seqNum = message[0];
 
+        // print current state to STDERR.
+        if(packets[seqNum]) {
+            fprintf(stderr,"window = %d, ACK = %d, received = %d\n", windowSize, expectedSeqNum, seqNum);
+        }
+
         packets[seqNum] = true;
         if(seqNum == expectedSeqNum) {
             while(expectedSeqNum < max && packets[expectedSeqNum])
                 expectedSeqNum++;
         }
 
-        // print current state to STDERR.
-        fprintf(stderr,"window = %d, ACK = %d, received = %d\n", windowSize, expectedSeqNum, seqNum);
+
         ackNum = expectedSeqNum;
         if(ackNum < max) 
             sock.ackTo((char*) &ackNum, sizeof(ackNum));
