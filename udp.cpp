@@ -140,7 +140,7 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         }
 
         // print current state to STDERR.
-        // cerr << "ACK " << expectedSeqNum << " received = " << seqNum << endl;
+        cerr << "ACK " << expectedSeqNum << " received = " << seqNum << endl;
         ackNum = expectedSeqNum;
         if(ackNum < max) 
             sock.ackTo((char*) &ackNum, sizeof(ackNum));
