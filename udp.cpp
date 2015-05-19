@@ -26,10 +26,10 @@ bool isTimeout(Timer& t) {
 int clientStopWait( UdpSocket &sock, const int max, int message[] ) {
     cerr << "client: stop & wait test:" << endl;
 
-    int retransNum = 0;
-
+    int retransmission = 0;
     int ackNum = -1;
     Timer timeout;
+
     for ( int i = 0; i < max; i++ ) {
         message[0] = i; // place sequence # in message[0].
 
@@ -38,20 +38,20 @@ int clientStopWait( UdpSocket &sock, const int max, int message[] ) {
 
             timeout.start();
 
-            while(timeout.lap() < TIMEOUT_USEC && !canRecv(sock)) {}
+            while(!isTimeout(timeout) && !canRecv(sock)) {}
 
             // recv if available, otherwise count the retransmission.
             if(canRecv(sock)) {
                 ackNum = recvAck(sock);
             } else {
-                retransNum++;
+                retransmission++;
                 cerr << "timeout: retransmitting " << i << endl;
             }
         }
 
         cerr << "ack = " << ackNum << " message = " << message[0] << endl;
     }
-    return retransNum;
+    return retransmission;
 }
 
 void serverReliable( UdpSocket &sock, const int max, int message[] ) {
@@ -73,23 +73,25 @@ void serverReliable( UdpSocket &sock, const int max, int message[] ) {
 */
 
 int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int windowSize ) {
+    // used to track messages that were already sent.
     bool sent[max];
     for(int i=0; i<max; i++) sent[i] = false;
 
     int retransmitted   = 0;
-    int base     = 0;
-    int nextSeqNum = 0;
+    int base            = 0; // start of the window
+    int nextSeqNum      = 0; // expected sequence number.
     Timer timer;
 
     while(nextSeqNum < max || base < max) {
-        fprintf(stderr, "window = %d, base = %d, nextSeqNum = %d, base+windowSize = %d\n", windowSize, base, nextSeqNum, base+windowSize);
+        // fprintf(stderr, "window = %d, base = %d, nextSeqNum = %d, base+windowSize = %d\n", windowSize, base, nextSeqNum, base+windowSize);
+
         // in window & not finished transmitting.
         if(nextSeqNum < base + windowSize && nextSeqNum < max) {
             message[0] = nextSeqNum; // place sequence # in message[0].
-            cerr << "send seq # = " << nextSeqNum << endl;
+            // cerr << "send seq # = " << nextSeqNum << endl;
             sock.sendTo( (char*) message, MSGSIZE);
 
-            // retransmission counter logic.
+            // if the packets has already been sent, count as a retransmission.
             if(sent[nextSeqNum]) retransmitted++;
             sent[nextSeqNum] = true;
 
@@ -100,29 +102,29 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
             timer.start();
             bool windowMoved = false;
 
+            // wait for either a timeout or an ack recv.
             while(!isTimeout(timer) & !canRecv(sock)) {}
 
             // ack received.
             if(canRecv(sock)) {
                 int ack = recvAck(sock);
-                cerr << "receive ACK " << ack << endl;
+                // cerr << "receive ACK " << ack << endl;
                 if(ack > base) {
                     base = ack;
-                    cerr << "receive base = " << base << endl;
                     windowMoved = true;
                 }
             }
             // timeout
             else {
                 if(!windowMoved) {
-                    cerr << "timeout base = " << base << endl;
+                    // cerr << "timeout base = " << base << endl;
                     nextSeqNum = base;
                 }
             }
         }
     }
-    while(canRecv(sock))
-        int discard = recvAck(sock);
+    // while(canRecv(sock))
+    //     int discard = recvAck(sock);
 
     return retransmitted;
 }
@@ -130,126 +132,32 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
 void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
           int windowSize) {
     cerr << "start window size = " << windowSize << endl;
-    // init packets array all to false;
+    // used to track all received packets.
     bool packets[max];
     for(int i=0; i<max; i++) packets[i] = false;
 
     int expectedSeqNum = 0;
-    int ackNum;
 
     while(expectedSeqNum < max) {
         sock.recvFrom( (char*) message, MSGSIZE);
         int seqNum = message[0];
 
-        // print current state to STDERR.
-        // if(seqNum < max && !packets[seqNum]) {
-            fprintf(stderr,"window = %d, seqNo = %d, received = %d\n", windowSize, expectedSeqNum, seqNum);
-        // }
+        // fprintf(stderr,"window = %d, seqNo = %d, received = %d\n", windowSize, expectedSeqNum, seqNum);
 
         packets[seqNum] = true;
         if(seqNum == expectedSeqNum) {
+            // fast forward expectedSeqNum to be the 
+            //     next unreceived (false) packet.
             while(expectedSeqNum < max && packets[expectedSeqNum])
                 expectedSeqNum++;
         }
 
-
-        ackNum = expectedSeqNum;
+        int ackNum = expectedSeqNum;
+        // ack a valid packet.
         if(ackNum <= max) {
-            cerr << "acked " << ackNum << endl;
             sock.ackTo((char*) &ackNum, sizeof(ackNum));
         }
     }
 
     cerr << "finish window size = " << windowSize << endl;
 }
-
-/*
-int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int windowSize ) {
-    // used to track retransmission.
-    bool* sent = new bool[max];
-    for(int i=0; i<max; i++) sent[i] = false;
-
-    int retransmitted   = 0;
-    int windowStart     = 0;
-    int curSeq          = 0;
-    Timer timer;
-
-    while(windowStart < max) {
-        // state: inside window & not at end of transmission.
-        if(curSeq < windowStart + windowSize && curSeq < max) {
-            message[0] = curSeq; // place sequence # in message[0].
-            cerr << "send seq # = " << curSeq << endl;
-            sock.sendTo( (char*) message, MSGSIZE);
-
-            // retransmission counter logic.
-            if(sent[curSeq]) retransmitted++;
-            sent[curSeq] = true;
-
-            if(canRecv(sock)) {
-                int ack = recvAck(sock);
-                if(ack == windowStart) windowStart++;
-            }
-            curSeq++;
-        }
-
-        // state: wait for the window to move, or timeout
-        else {
-            timer.start();
-
-            // wait for an event to happen.
-            while(timer.lap() < TIMEOUT_USEC && !canRecv(sock)) {}
-            
-            // state: receive acks
-            if(canRecv(sock)) {
-                while(canRecv(sock)) {
-                    int ackNum = recvAck(sock);
-                    if(ackNum > windowStart) {
-                        windowStart = ackNum;
-                        cerr << "ACK window start = " << windowStart << endl;
-                    }
-                }
-            } 
-            // state: timeout, resend window.
-            else {
-                cerr << "timeout: retransmitting window (start = "
-                    << windowStart <<" )\n";
-                curSeq = windowStart;
-            }
-        }
-    }
-    return retransmitted;
-}
-
-void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
-          int windowSize ) {
-    cerr << "server early retrans test:" << endl;
-    cerr << "start window size = " << windowSize << endl;
-    // init packets array all to false;
-    bool* packets = new bool[max];
-    for(int i=0; i<max; i++) packets[i] = false;
-
-    for(int i=0; i<max;) {
-        // receive and recorded a message.
-        sock.recvFrom( (char*) message, MSGSIZE);
-        int seqNum = message[0];
-        
-        // record received sequence number.
-        if(seqNum < max) packets[seqNum] = true;
-
-        // fast forward before ack'ing
-        while(packets[i]) i++;
-
-        // ack the next expected.
-        sock.ackTo((char*) &i, sizeof(int));
-
-        // print current state to STDERR.
-        cerr << "ACK " << i << " received = " << seqNum << endl;
-        if(seqNum+1 != i)   cerr << "\t\tNOT EXPECTED" << endl;
-        else                cerr << endl;
-    }
-
-    delete packets;
-
-    cerr << "finish window size = " << windowSize << endl;
-}
-*/
