@@ -97,10 +97,6 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
             if(sent[nextSeqNum]) retransmitted++;
             sent[nextSeqNum] = true;
 
-            if(canRecv(sock)) {
-                int ack = recvAck(sock);
-                if(ack == base) base++;
-            }
             nextSeqNum++;
         }
         // outside window
@@ -152,7 +148,7 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         if(!isRandomDrop(dropPercent)) {
             // print current state to STDERR.
             // if(seqNum < max && !packets[seqNum]) {
-                fprintf(stderr,"window = %d, ACK = %d, received = %d\n", windowSize, expectedSeqNum, seqNum);
+                fprintf(stderr,"window = %d, seqNo = %d, received = %d\n", windowSize, expectedSeqNum, seqNum);
             // }
 
             packets[seqNum] = true;
