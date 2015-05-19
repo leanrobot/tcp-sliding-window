@@ -147,9 +147,9 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
 
         if(!isRandomDrop(dropPercent)) {
             // print current state to STDERR.
-            if(seqNum < max && !packets[seqNum]) {
+            // if(seqNum < max && !packets[seqNum]) {
                 fprintf(stderr,"window = %d, ACK = %d, received = %d\n", windowSize, expectedSeqNum, seqNum);
-            }
+            // }
 
             packets[seqNum] = true;
             if(seqNum == expectedSeqNum) {
