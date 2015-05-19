@@ -121,7 +121,7 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
           int windowSize) {
     cerr << "start window size = " << windowSize << endl;
     // init packets array all to false;
-    bool* packets = new bool[max];
+    bool packets[max];
     for(int i=0; i<max; i++) packets[i] = false;
 
     int expectedSeqNum = 0;
@@ -137,13 +137,10 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         if(seqNum != expectedSeqNum) cerr << "\t\tNOT EXPECTED" << endl;
         else cerr << endl;
 
-        if(seqNum == expectedSeqNum) {
-            expectedSeqNum++;
-        }
-        sock.ackTo((char*) &expectedSeqNum, sizeof(int));
-    }
+        while(packets[expectedSeqNum]) expectedSeqNum++;
 
-    delete packets;
+        sock.ackTo((char*) &expectedSeqNum, sizeof(expectedSeqNum));
+    }
 
     cerr << "finish window size = " << windowSize << endl;
 }
