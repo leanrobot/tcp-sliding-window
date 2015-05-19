@@ -130,15 +130,15 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         sock.recvFrom( (char*) message, MSGSIZE);
         int seqNum = message[0];
 
-        if(seqNum < max) packets[seqNum] = true;
+        if(0 <= seqNum && seqNum < max) packets[seqNum] = true;
+
+        if(seqNum == expectedSeqNum) {
+            while(expectedSeqNum < max && packets[expectedSeqNum])
+                expectedSeqNum++;
+        }
 
         // print current state to STDERR.
-        cerr << "ACK " << expectedSeqNum << " received = " << seqNum;
-        if(seqNum != expectedSeqNum) cerr << "\t\tNOT EXPECTED" << endl;
-        else cerr << endl;
-
-        while(packets[expectedSeqNum]) expectedSeqNum++;
-
+        cerr << "ACK " << expectedSeqNum << " received = " << seqNum << endl;
         sock.ackTo((char*) &expectedSeqNum, sizeof(expectedSeqNum));
     }
 
