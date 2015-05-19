@@ -31,10 +31,10 @@ bool isTimeout(Timer& t) {
 int clientStopWait( UdpSocket &sock, const int max, int message[] ) {
     cerr << "client: stop & wait test:" << endl;
 
-    int retransNum = 0;
-
+    int retransmission = 0;
     int ackNum = -1;
     Timer timeout;
+
     for ( int i = 0; i < max; i++ ) {
         message[0] = i; // place sequence # in message[0].
 
@@ -43,20 +43,20 @@ int clientStopWait( UdpSocket &sock, const int max, int message[] ) {
 
             timeout.start();
 
-            while(timeout.lap() < TIMEOUT_USEC && !canRecv(sock)) {}
+            while(!isTimeout(timeout) && !canRecv(sock)) {}
 
             // recv if available, otherwise count the retransmission.
             if(canRecv(sock)) {
                 ackNum = recvAck(sock);
             } else {
-                retransNum++;
-                cerr << "timeout: retransmitting " << i << endl;
+                retransmission++;
+                // cerr << "timeout: retransmitting " << i << endl;
             }
         }
 
-        cerr << "ack = " << ackNum << " message = " << message[0] << endl;
+        // cerr << "ack = " << ackNum << " message = " << message[0] << endl;
     }
-    return retransNum;
+    return retransmission;
 }
 
 void serverReliable( UdpSocket &sock, const int max, int message[] ) {
@@ -65,7 +65,7 @@ void serverReliable( UdpSocket &sock, const int max, int message[] ) {
     for ( int i = 0; i < max; i++ ) {
         int ackNum;
         do {
-            sock.recvFrom( ( char * ) message, MSGSIZE );   // udp message receive
+            sock.recvFrom( ( char * ) message, MSGSIZE );
             ackNum = message[0];
         } while(ackNum != i);
         sock.ackTo( (char*) &ackNum, sizeof(int));
@@ -76,24 +76,27 @@ void serverReliable( UdpSocket &sock, const int max, int message[] ) {
 /*==============================================================================
         Sliding Window Implementation
 */
+
 int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int windowSize ) {
+    // used to track messages that were already sent.
     bool sent[max];
     for(int i=0; i<max; i++) sent[i] = false;
 
     int retransmitted   = 0;
-    int base     = 0;
-    int nextSeqNum = 0;
+    int base            = 0; // start of the window
+    int nextSeqNum      = 0; // expected sequence number.
     Timer timer;
 
     while(nextSeqNum < max || base < max) {
-        fprintf(stderr, "window = %d, base = %d, nextSeqNum = %d, base+windowSize = %d\n", windowSize, base, nextSeqNum, base+windowSize);
+        // fprintf(stderr, "window = %d, base = %d, nextSeqNum = %d, base+windowSize = %d\n", windowSize, base, nextSeqNum, base+windowSize);
+
         // in window & not finished transmitting.
         if(nextSeqNum < base + windowSize && nextSeqNum < max) {
             message[0] = nextSeqNum; // place sequence # in message[0].
-            cerr << "send seq # = " << nextSeqNum << endl;
+            // cerr << "send seq # = " << nextSeqNum << endl;
             sock.sendTo( (char*) message, MSGSIZE);
 
-            // retransmission counter logic.
+            // if the packets has already been sent, count as a retransmission.
             if(sent[nextSeqNum]) retransmitted++;
             sent[nextSeqNum] = true;
 
@@ -104,30 +107,27 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
             timer.start();
             bool windowMoved = false;
 
+            // wait for either a timeout or an ack recv.
             while(!isTimeout(timer) & !canRecv(sock)) {}
 
             // ack received.
             if(canRecv(sock)) {
                 int ack = recvAck(sock);
-                cerr << "receive ACK " << ack << endl;
+                // cerr << "receive ACK " << ack << endl;
                 if(ack > base) {
                     base = ack;
-                    cerr << "receive base = " << base << endl;
                     windowMoved = true;
                 }
             }
             // timeout
             else {
                 if(!windowMoved) {
-                    cerr << "timeout base = " << base << endl;
+                    // cerr << "timeout base = " << base << endl;
                     nextSeqNum = base;
                 }
             }
         }
     }
-    while(canRecv(sock))
-        int discard = recvAck(sock);
-
     return retransmitted;
 }
 

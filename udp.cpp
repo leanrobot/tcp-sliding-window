@@ -45,11 +45,11 @@ int clientStopWait( UdpSocket &sock, const int max, int message[] ) {
                 ackNum = recvAck(sock);
             } else {
                 retransmission++;
-                cerr << "timeout: retransmitting " << i << endl;
+                // cerr << "timeout: retransmitting " << i << endl;
             }
         }
 
-        cerr << "ack = " << ackNum << " message = " << message[0] << endl;
+        // cerr << "ack = " << ackNum << " message = " << message[0] << endl;
     }
     return retransmission;
 }
@@ -60,7 +60,7 @@ void serverReliable( UdpSocket &sock, const int max, int message[] ) {
     for ( int i = 0; i < max; i++ ) {
         int ackNum;
         do {
-            sock.recvFrom( ( char * ) message, MSGSIZE );   // udp message receive
+            sock.recvFrom( ( char * ) message, MSGSIZE );
             ackNum = message[0];
         } while(ackNum != i);
         sock.ackTo( (char*) &ackNum, sizeof(int));
@@ -123,14 +123,12 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
             }
         }
     }
-    // while(canRecv(sock))
-    //     int discard = recvAck(sock);
-
     return retransmitted;
 }
 
 void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
           int windowSize) {
+    cerr << "server: early retransmit test:" << endl;
     cerr << "start window size = " << windowSize << endl;
     // used to track all received packets.
     bool packets[max];
