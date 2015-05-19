@@ -134,7 +134,6 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
 void serverEarlyRetrans( UdpSocket &sock, const int max, int message[], 
           int windowSize, int dropPercent) {
     cerr << "server: early retransmit test:" << endl;
-    cerr << "start window size = " << windowSize << endl;
     fprintf(stderr, "start window size = %d, drop percent = %d\n", windowSize, dropPercent);
     // used to track all received packets.
     bool packets[max];
