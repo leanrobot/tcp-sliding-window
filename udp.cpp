@@ -113,6 +113,7 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
         //     exit(-1);
         // }
     }
+    delete sent;
     return retransmitted;
 }
 
