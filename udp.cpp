@@ -141,7 +141,7 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         int seqNum = message[0];
 
         // print current state to STDERR.
-        if(packets[seqNum]) {
+        if(!packets[seqNum]) {
             fprintf(stderr,"window = %d, ACK = %d, received = %d\n", windowSize, expectedSeqNum, seqNum);
         }
 
