@@ -102,6 +102,7 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
         // outside window
         else {
             timer.start();
+            bool windowMoved = false;
 
             while(!isTimeout(timer) & !canRecv(sock)) {}
 
@@ -112,12 +113,15 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
                 if(ack >= base) {
                     base = ack +1;
                     cerr << "receive base = " << base << endl;
+                    windowMoved = true;
                 }
             }
             // timeout
             else {
-                cerr << "timeout base = " << base << endl;
-                nextSeqNum = base;
+                if(!windowMoved) {
+                    cerr << "timeout base = " << base << endl;
+                    nextSeqNum = base;
+                }
             }
         }
     }
