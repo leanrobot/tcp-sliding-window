@@ -163,8 +163,10 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
 
 
             ackNum = expectedSeqNum + 1;
-            if(ackNum <= max) 
+            if(ackNum <= max) {
+                cerr << "FFFFFFFFFFFFFFFF";
                 sock.ackTo((char*) &ackNum, sizeof(ackNum));
+            }
         }
         else {
             fprintf(stderr,"window = %d, ACK = %d, received = %d", windowSize, expectedSeqNum, seqNum);
