@@ -95,18 +95,18 @@ int clientSlidingWindow( UdpSocket &sock, const int max, int message[], int wind
                 timer.start();
             nextSeqNum++;
         }
-        if(isTimeout(timer)) {
-            cerr << "timeout base = " << base << endl;
-            nextSeqNum = base;
-        }
         while(canRecv(sock)) {
             int ack = recvAck(sock);
             cerr << "receive ACK " << ack << endl;
-            if(0<=ack && ack < max)
+            if(0<=ack && ack < max && ack > base)
                 base = ack;
             cerr << "receive base = " << base << endl;
             if(base == nextSeqNum)
                 timer.start();
+        }
+        if(isTimeout(timer)) {
+            cerr << "timeout base = " << base << endl;
+            nextSeqNum = base;
         }
 
         // if(timeouts == 15) {
@@ -130,7 +130,6 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         sock.recvFrom( (char*) message, MSGSIZE);
         int seqNum = message[0];
 
-        sock.ackTo((char*) &expectedSeqNum, sizeof(int));
         if(seqNum < max) packets[seqNum] = true;
 
         // print current state to STDERR.
@@ -141,6 +140,7 @@ void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
         if(seqNum == expectedSeqNum) {
             expectedSeqNum++;
         }
+        sock.ackTo((char*) &expectedSeqNum, sizeof(int));
     }
 
     delete packets;
