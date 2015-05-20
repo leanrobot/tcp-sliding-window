@@ -1,3 +1,9 @@
+/* 
+Tom Petit
+CSS 432 - Spring 2015
+Program 3 - TCP Sliding Window
+*/
+
 #include "UdpSocket.h"
 #include "Timer.h"
 #include "stdlib.h"
